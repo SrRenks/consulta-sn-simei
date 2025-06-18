@@ -30,7 +30,7 @@ class SnSimei:
         self.human.scroll_page()
 
         self.tab.call_method("Runtime.evaluate", expression="document.querySelector('#Cnpj').scrollIntoView();")
-        time.sleep(0.6 + random.gauss(0, 0.1))
+        time.sleep(max(0, 0.6 + random.gauss(0, 0.1)))
 
         input_box = self.tab.call_method("Runtime.evaluate", expression="""
             (() => {
@@ -41,10 +41,9 @@ class SnSimei:
 
         self.mouse_mover.stop()
         self.human.click(input_box["x"], input_box["y"])
-        time.sleep(1.1 + random.gauss(0, 0.2))
 
-        self.human.type_text(''.join(char for char in str(cnpj) if char.isdigit()))
-        time.sleep(0.8 + random.gauss(0, 0.1))
+        self.human.type_text(''.join(char for char in str(cnpj) if char.isdigit()), max(0.05, random.gauss(0.1, 0.15)))
+        time.sleep(max(0, 0.8 + random.gauss(0, 0.1)))
 
         btn_box = self.tab.call_method("Runtime.evaluate", expression="""
             (() => {
@@ -57,7 +56,7 @@ class SnSimei:
 
         start = time.time()
         self.human.click(btn_box["x"], btn_box["y"])
-        time.sleep(self.human._hesitation_curve(time.time() - start))
+        time.sleep(max(0, self.human._hesitation_curve(time.time() - start)))
 
         new_html = prev_html
         start_time = time.time()
