@@ -1,135 +1,225 @@
-# Consulta Simples Nacional / SIMEI - Automação Stealth com Chrome DevTools
 
-Este projeto realiza consultas automatizadas e **furtivas (stealth)** no site da Receita Federal para verificar a situação de CNPJs no **Simples Nacional** e no **SIMEI**, utilizando simulação realista de comportamento humano para **evitar bloqueios por sistemas como hCaptcha**.
+# Consulta Automatizada no Portal do Simples Nacional com Stealth Anti-Bot
 
----
-
-## 🧠 Base Teórica
-
-O comportamento do usuário é simulado com base nos seguintes estudos:
-
-- **Keystroke-Level Model (KLM)** — Card, Moran e Newell  
-- **Human-Computer Interaction** — Dix et al.  
-- **Heurísticas da Nielsen Norman Group** (usabilidade e interação)  
-- **OWASP Automated Threat Handbook** — Estratégias para evitar detecção de bots  
-
----
-
-## 🛠️ Tecnologias Utilizadas
-
-- Python 3.10+
-- pychrome — controle do Chrome via DevTools Protocol
-- BeautifulSoup — extração de informações do HTML
-- pandas, tqdm — manipulação de dados e progresso
-- argparse — CLI amigável
-- concurrent.futures — execução paralela com múltiplas instâncias do Chrome
-- Simulação de comportamento humano:
-  - Digitação realista
-  - Movimento do mouse suave
-  - Hesitação entre ações
-  - Scroll de página
+Este projeto automatiza o processo de consulta de situação no Simples Nacional e SIMEI para CNPJs, utilizando uma instância controlada do Chrome em modo **stealth**, com múltiplas camadas de **evasão anti-bot**, simulação de comportamento humano e mitigação de **fingerprints detectáveis por sistemas de Captcha e similares**.
 
 ---
 
 ## 📦 Instalação
 
-1. Clone o repositório:
+### 1. Requisitos
 
-    ```git clone https://github.com/SrRenks/consulta-sn-simei.git```
+- Python 3.10+
+- Google Chrome (instalado e acessível via linha de comando)
+- Portas disponíveis para depuração remota (9222, 9223, ...)
 
-    ```cd consulta-sn-simei```
+#### Originalmente desenvolvido em ambiente Linux (Debian, Gnome). Adaptado para funcionamento também em Windows e Mac, porém essas versões ainda não foram completamente testadas e podem apresentar instabilidades.
 
-2. Crie e ative um ambiente virtual:
+---
+### 2. Dependências
 
-    ```python -m venv .venv```
-    
-    ```source .venv/bin/activate```  (Linux/macOS)
-    ```.venv\Scripts\activate``` (Windows)
-    
+Instale as dependências com:
 
-3. Instale as dependências:
+```bash
+pip install -r requirements.txt
+```
 
-    ```pip install -r requirements.txt```
+## 🚀 Uso
+
+### 1. Inicie uma instância do Chrome com DevTools remoto
+
+```bash
+google-chrome \
+  --remote-debugging-port=9222 \
+  --user-data-dir=/tmp/chrome-stealth \
+  --no-first-run \
+  --disable-blink-features=AutomationControlled \
+  --disable-extensions \
+  --lang=pt-BR \
+  --window-size=1280,800
+```
+
+> Ou utilize o `ChromeManager` do próprio projeto para isso.
+
+### 2. Execute a consulta
+
+```python
+from src.snsimei import SnSimei
+from src.utils import ChromeManager
+
+cnpj = "12.345.678/0001-90"
+
+manager = ChromeManager(remote_debugging_port=9222)
+bot = SnSimei(manager)
+resultado = bot.get_cnpj_info(cnpj)
+
+print(resultado)
+```
 
 ---
 
-## ⚙️ Como Usar
+## 📁 Estrutura do Projeto
 
-### 1. Prepare o arquivo de entrada
+```
+consulta-sn-simei/
+│
+├── src/
+│   ├── main/
+│   │   └── main.py                           # Executável principal
+│   │
+│   ├── utils/
+│       ├── __init__.py
+│       ├── chrome.py                         # ChromeManager
+│       ├── stealth.py                        # StealthToolkit
+│       ├── human.py                          # HumanMouseMover e simulador de interação
+│       └── scraper.py                        # Classe SnSimei com scraping em si
+│
+├── resources/
+│   └── *.js                                   # Scripts de evasão e spoofing
 
-Um arquivo `.xlsx` com uma coluna chamada `CNPJ`.
-
-Exemplo:
-
-| CNPJ             |
-|------------------|
-| 18.781.203/0001-28 |
-| 06123010000100     |
-
-### 2. Execute o script
-
-    python main.py -i ./entradas.xlsx -o ./resultados.xlsx
-
----
-
-## 📄 Output
-
-O arquivo de saída conterá as seguintes colunas:
-
-- CNPJ
-- Nome Empresarial
-- Situação no Simples Nacional
-- Situação no SIMEI
-- Exception *(se houver erro específico para aquele CNPJ)*
+```
 
 ---
 
-## 🧪 Estratégia Stealth
+## 🔍 Detalhes Técnicos: Blindagem Anti-Bot e Anti-Captcha
 
-Para evitar detecção por sistemas anti-bot como o hCaptcha:
+### 🎯 Objetivo
 
-- Usa uma instância personalizada do Chrome com:
-  - `--remote-debugging-port`
-  - `--disable-blink-features=AutomationControlled`
-  - Perfil de usuário exclusivo
-- Movimentação de mouse com ruído e variação
-- Scroll aleatório da página
-- Hesitação programada entre ações
-- Evita uso direto de `.click()` ou `.value =`
+Evitar a detecção por mecanismos de análise comportamental e fingerprinting como:
+
+- **Captcha Invisble**
+- **BotD / FingerprintJS**
+- **Detecção via `navigator` e `WebGL`**
+- **Verificação de `Chrome Runtime`, `toString` e `plugins`**
 
 ---
 
-## 🧩 Estrutura do Projeto
+### 🛡️ Spoofing e Patching via DevTools Protocol (Explicado em Detalhes)
 
-    consulta-sn-simei/
-    ├── src/
-    │   ├── main.py
-    │   ├── utils/
-    |   |   ├── __init__.py
-    │   │   ├── chrome.py
-    │   │   ├── human.py
-    │   │   ├── snsimei.py
-    ├── requirements.txt
-    ├── README.md
+Abaixo a descrição técnica de **todos os arquivos JS** utilizados pelo `StealthToolkit`, injetados com `Runtime.evaluate`:
+
+| Arquivo                                       | Função                                                                                                                                                    |
+| --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`stealth_injection.js`**                    | Script base que aplica camadas mínimas de evasão (`navigator.webdriver = false`, etc).                                                                    |
+| **`spoof_canvas_fingerprint.js`**             | Substitui `CanvasRenderingContext2D.prototype.getImageData` e `toDataURL` para retornar pixels com ruído determinístico, evitando fingerprint por canvas. |
+| **`canvas_noise.js`**                         | Versão alternativa com ruído aleatório a cada execução — útil para sessões efêmeras.                                                                      |
+| **`spoof_webgl_precision.js`**                | Modifica a resposta de `getShaderPrecisionFormat` e `getParameter` do WebGL para valores típicos de hardware real.                                        |
+| **`webgl_spoof.js`**                          | Injeta spoof completo de `WebGLRenderingContext`, com vendor e renderer personalizados (ex: "NVIDIA Corporation").                                        |
+| **`mock_navigator_plugins_and_mimetypes.js`** | Preenche `navigator.plugins` e `navigator.mimeTypes` com mocks de plugins reais como Flash, PDF Viewer etc.                                               |
+| **`override_function_toString.js`**           | Sobrescreve `Function.prototype.toString` para retornar código legítimo de funções spoofadas, evitando fingerprint reverso.                               |
+| **`mock_chrome_runtime.js`**                  | Cria um objeto `chrome.runtime` falso para evitar erros em sites que testam `typeof chrome.runtime === 'object'`.                                         |
+| **`mock_webrtc.js`**                          | Neutraliza `RTCPeerConnection` e `createDataChannel`, evitando fingerprint de IP local e interfaces de rede via WebRTC.                                   |
+| **`rtc_peerconnection_patch.js`**             | Similar ao anterior, porém mais granular: intercepta `addIceCandidate`, `onicecandidate`, e oculta candidatos com IP local.                               |
+| **`mock_audio_fingerprint.js`**               | Spoofa `AudioContext` e `AnalyserNode.getFloatFrequencyData`, inserindo pequenas variações de ruído no áudio gerado.                                      |
+| **`audio_oscillator_patch.js`**               | Intercepta `OscillatorNode` para retornar valores consistentes, evitando fingerprint baseado em render de som oscilatório.                                |
+| **`mock_navigator_connection.js`**            | Preenche `navigator.connection` com valores plausíveis (`downlink`, `rtt`, `type`) para simular rede real (4g, etc).                                      |
+| **`screen_properties.js`**                    | Define valores customizados de `screen.width`, `height`, `availWidth`, etc, evitando identificação de headless ou VMs.                                    |
+| **`navigator_properties.js`**                 | Sobrescreve propriedades comuns como `hardwareConcurrency`, `deviceMemory`, `languages`, `userAgentData`.                                                 |
+| **`mock_media_devices.js`**                   | Adiciona simulações a `navigator.mediaDevices.enumerateDevices`, simulando webcam e microfone.                                                            |
+| **`permissions_query_patch.js`**              | Evita erros ao chamar `navigator.permissions.query` — define resposta para permissões típicas (`notifications`, etc).                                     |
+| **`intl_datetime_patch.js`**                  | Altera a resposta de formatações com `Intl.DateTimeFormat`, simulando timezone coerente com o idioma/região configurada.                                  |
+
+Esses patches são modulados e selecionáveis conforme o `level` configurado em `StealthToolkit(level="low" | "normal" | "strict")` ou listados de forma personalizadas pelo modo `custom`, passando-os por meio do atributo `custom_methods` em lista.
+
+### 2. **Simulação de Comportamento Humano (Mouse/Teclado)**
+
+A classe `HumanMouseMover` usa movimentos reais e não-lineares, com delays e hesitação baseada em **distribuição gaussiana**.
+
+**Exemplo de digitação:**
+
+```python
+self.human.type_text('12345678', max(0.05, random.gauss(0.1, 0.15)))
+```
+
+**Exemplo de clique:**
+
+```python
+self.human.click(x, y)
+```
+
+Esses movimentos são executados:
+
+- Com pausa antes de digitar
+- Com variação de tempo por caractere
+- Com cálculo de posição real via `getBoundingClientRect`
+
+
+### 3. **Detecção de DOM Dinâmico e Espera Assíncrona**
+
+Para evitar interações precipitadas:
+
+- O HTML da página é verificado antes e depois do clique.
+- A automação espera mudanças reais no DOM, sinalizando carregamento de nova página.
+
+```python
+while new_html == prev_html:
+    time.sleep(0.1)
+```
+
+Além disso, é utilizado:
+
+```python
+self.human.wait_for_pageload()
+```
+
+### 4. **Fechamento Controlado e Reset de Sessão**
+
+Após cada execução:
+
+- O `ChromeManager` encerra a instância.
+- O perfil de usuário é isolado por diretório (`--user-data-dir`), permitindo multithreading com IP/proxy distintos.
 
 ---
 
-## ⚠️ Avisos Legais
+## 💡 Recomendações e Melhorias para Robustez e Escalabilidade
 
-Este projeto é apenas para fins educacionais. A automação de sistemas públicos deve ser feita com responsabilidade e sem violar os **Termos de Uso** da instituição envolvida. O uso indevido pode acarretar penalidades legais.
+### Uso de Proxy por Instância para Evitar Banimento e Fingerprint Comportamental
 
-### 🔌 Portas Utilizadas
+Para evitar bloqueios comuns baseados em IP e reduzir o risco de fingerprint comportamental, recomenda-se fortemente a utilização de **instâncias independentes do Chrome, cada uma com seu próprio proxy**. Isso permite:
 
-Por padrão, o script inicia o Chrome usando a porta **9222** para o protocolo DevTools. Quando múltiplos CNPJs são processados em paralelo (via multithreading), cada instância do Chrome usa uma porta sequencial: **9222**, **9223**, **9224**, etc., de acordo com o número de threads ativas; o que é modificável, mas a depender dos recursos de sua máquina. Por precaução matenha valores baixos para evitar ser considerado um comportamento suspeito vindo de seu IP (caso não esteja utilizando uma rotação via proxy).
+* **Distribuição da carga e anonimização** do tráfego, dificultando a detecção por IP repetido.
+* Redução do acoplamento entre fingerprint de rede e fingerprint comportamental, já que cada instância navega por uma rota distinta.
+* Maior resistência a bloqueios geográficos e políticas regionais específicas.
+
+### Estratégias Recomendadas:
+
+1. **Proxies Rotativos e Dedicados:**
+
+   * Utilize proxies rotativos com pool de IPs brasileiros para maior naturalidade.
+   * Sempre que possível, prefira proxies residenciais ou mobile, que simulam conexões legítimas.
+
+2. **Isolamento Completo de Perfil por Instância:**
+
+   * Use diferentes `user-data-dir` para cada instância para evitar cache e armazenamento compartilhado.
+   * Configure cookies, localStorage e IndexedDB isoladamente.
+
+3. **Simulação Avançada de Comportamento Humano:**
+
+   * Combine o uso do `HumanMouseMover` e `StealthToolkit` com delays e movimentos randômicos.
+   * Intercale padrões de navegação — evite sequências idênticas entre instâncias.
+
+4. **Monitoramento e Feedback Dinâmico:**
+
+   * Implemente captura e análise de logs para detectar bloqueios ou respostas suspeitas.
+   * Ajuste proxies e scripts stealth conforme o feedback dos servidores.
+
+5. **Escalonamento Paralelo Cuidadoso:**
+
+   * Ajuste o número de threads/processos conforme capacidade da máquina e qualidade do proxy.
+   * Respeite limites e intervalos entre requisições para não gerar comportamento robótico.
 
 ---
 
-## 📬 Contribuições
+## 📌 Considerações Finais
 
-Contribuições são bem-vindas! Abra uma *issue* ou envie um *pull request* com melhorias.
+Esse projeto serve como base para aplicações onde é necessário:
+
+- Executar **web scraping seguro** em domínios com detecção avançada
+- Automatizar interações com **alta fidelidade de simulação humana**
+- Realizar **pesquisas com CNPJs** sem bloqueios ou captchas persistentes
 
 ---
 
-## 🧑‍💻 Autor
+## ⚠️ Disclaimer
 
-Desenvolvido por Renks (https://github.com/SrRenks)
+Este projeto é estritamente educacional. O uso indevido em violação aos Termos de Serviço de sites-alvo pode ser ilegal. Use com responsabilidade.
