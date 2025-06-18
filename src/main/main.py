@@ -41,7 +41,7 @@ class SNSimeiManager:
         return dv == verifiers
 
     def __extract_cnpj_info(self, cnpj, port: int) -> Dict[str, str]:
-        chrome_manager = ChromeManager(speed_threshold=0.8, remote_debugging_port=port)
+        chrome_manager = ChromeManager(speed_threshold=0.8, remote_debugging_port=port, stealth_level="strict")
         chrome_manager.launch()
         try:
             scraper = SnSimei(chrome_manager)
