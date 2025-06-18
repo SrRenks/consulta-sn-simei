@@ -5,7 +5,7 @@ Este projeto automatiza o processo de consulta de situação no Simples Nacional
 
 ---
 
-## 📦 Instalação
+## Instalação
 
 ### 1. Requisitos
 
@@ -24,7 +24,7 @@ Instale as dependências com:
 pip install -r requirements.txt
 ```
 
-## 🚀 Uso
+## Uso
 
 ### 1. Inicie uma instância do Chrome com DevTools remoto
 
@@ -55,10 +55,39 @@ resultado = bot.get_cnpj_info(cnpj)
 
 print(resultado)
 ```
+---
+
+### 3. Uso via CLI com `src/main/main.py`
+
+O script `main.py` implementa um gerenciador (`SNSimeiManager`) para processar listas de CNPJs em paralelo usando múltiplas instâncias do Chrome controladas via DevTools Protocol. Ele valida, normaliza e executa consultas simultâneas para obter informações do Simples Nacional / SIMEI, exportando o resultado para arquivo Excel.
 
 ---
 
-## 📁 Estrutura do Projeto
+#### Como usar:
+
+```bash
+python src/main/main.py -i input.xlsx -o output.xlsx
+```
+
+* `-i, --input`: caminho para arquivo Excel de entrada contendo uma coluna `CNPJ` com os números de CNPJ para consulta.
+* `-o, --output`: caminho para arquivo Excel onde os dados extraídos serão salvos.
+
+---
+
+#### Benefícios do uso multithread:
+
+* **Paralelismo com múltiplas instâncias do Chrome:** Cada CNPJ é consultado em uma instância Chrome isolada, usando portas diferentes no protocolo DevTools, evitando bloqueios e melhorando o throughput.
+* **Redução significativa no tempo total de consulta:** Ao usar um pool de threads (configurado para 3 simultâneas), o processo aproveita melhor os recursos do sistema e executa múltiplas requisições em paralelo.
+* **Robustez na execução:** O sistema gerencia automaticamente portas e instâncias, garantindo que cada tarefa de scraping rode isoladamente, minimizando interferências entre elas.
+* **Validação prévia dos CNPJs:** O manager filtra e rejeita CNPJs inválidos, evitando chamadas desnecessárias e melhorando a confiabilidade do resultado final.
+
+
+Esse design é especialmente útil para consultas em massa em sistemas que aplicam limitações ou bloqueios baseados em comportamento e IP, já que o paralelismo pode ser combinado com uso de proxies e técnicas stealth para aumentar a eficiência e anonimato das requisições.
+
+
+---
+
+## Estrutura do Projeto
 
 ```
 consulta-sn-simei/
@@ -81,9 +110,9 @@ consulta-sn-simei/
 
 ---
 
-## 🔍 Detalhes Técnicos: Blindagem Anti-Bot e Anti-Captcha
+## Detalhes Técnicos: Blindagem Anti-Bot e Anti-Captcha
 
-### 🎯 Objetivo
+### Objetivo
 
 Evitar a detecção por mecanismos de análise comportamental e fingerprinting como:
 
@@ -92,9 +121,8 @@ Evitar a detecção por mecanismos de análise comportamental e fingerprinting c
 - **Detecção via `navigator` e `WebGL`**
 - **Verificação de `Chrome Runtime`, `toString` e `plugins`**
 
----
 
-### 🛡️ Spoofing e Patching via DevTools Protocol (Explicado em Detalhes)
+### Spoofing e Patching via DevTools Protocol (Explicado em Detalhes)
 
 Abaixo a descrição técnica de **todos os arquivos JS** utilizados pelo `StealthToolkit`, injetados com `Runtime.evaluate`:
 
@@ -171,7 +199,7 @@ Após cada execução:
 
 ---
 
-## 💡 Recomendações e Melhorias para Robustez e Escalabilidade
+## Recomendações e Melhorias para Robustez e Escalabilidade
 
 ### Uso de Proxy por Instância para Evitar Banimento e Fingerprint Comportamental
 
@@ -210,7 +238,7 @@ Para evitar bloqueios comuns baseados em IP e reduzir o risco de fingerprint com
 
 ---
 
-## 📌 Considerações Finais
+## Considerações Finais
 
 Esse projeto serve como base para aplicações onde é necessário:
 
@@ -220,6 +248,6 @@ Esse projeto serve como base para aplicações onde é necessário:
 
 ---
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 Este projeto é estritamente educacional. O uso indevido em violação aos Termos de Serviço de sites-alvo pode ser ilegal. Use com responsabilidade.
